@@ -1,0 +1,35 @@
+# Internal Dataset Generation Configuration
+# Extensible batch-based design for incremental dataset creation
+
+generation:
+  batch_size: 500
+  start_index: 0
+  total_target: 5000
+  append_mode: true  # don't overwrite previous batches
+  output_dir: "./data/internal"
+
+source:
+  cuad_dataset: "cuad/cuad"
+  policy_playbook: "../data/Contract_Policy_Playbook.pdf"
+
+model:
+  name: "Qwen/Qwen2.5-7B-Instruct"
+  max_new_tokens: 512
+  temperature: 0.3  # low temp for consistent outputs
+
+prompts:
+  system: |
+    You are a legal contract analyst. Given a contract clause and a policy rule,
+    analyze the clause for compliance and generate a redline suggestion if needed.
+    Respond in JSON format with: risk_level, reasoning, redline_suggestion.
+  user_template: |
+    ## Contract Clause
+    {clause_text}
+
+    ## Policy Rule
+    {policy_rule}
+
+    Analyze this clause against the policy rule. Provide:
+    1. Risk Level: LOW, MEDIUM, or HIGH
+    2. Reasoning: Why this risk level was assigned
+    3. Redline Suggestion: If non-compliant, suggest revised language. If compliant, state "No changes needed."

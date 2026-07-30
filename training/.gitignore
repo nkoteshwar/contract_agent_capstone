@@ -1,0 +1,22 @@
+# Training Pipeline — Ignore generated data and outputs
+# These are large/ephemeral and should not be committed
+
+# Downloaded raw datasets (can be re-downloaded)
+data/raw/
+data/processed/
+data/internal/
+data/teacher_labels/
+
+# Model outputs / checkpoints
+outputs/
+
+# HuggingFace cache
+.cache/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Jupyter
+.ipynb_checkpoints/

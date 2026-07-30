@@ -1,0 +1,35 @@
+# Knowledge Distillation Configuration
+# Teacher → Student response-based distillation
+
+teacher:
+  adapter_path: "./outputs/teacher_qlora"
+  base_model: "Qwen/Qwen2.5-7B-Instruct"
+
+student:
+  adapter_path: "./outputs/student_qlora"
+  base_model: "Qwen/Qwen2.5-3B-Instruct"
+
+distillation:
+  output_dir: "./outputs/student_distilled"
+  num_examples: 10000
+  temperature: 2.0
+  alpha: 0.5  # weight for hard labels vs soft labels
+  num_train_epochs: 2
+  per_device_train_batch_size: 2
+  gradient_accumulation_steps: 8
+  learning_rate: 0.0001
+  lr_scheduler_type: "cosine"
+  warmup_ratio: 0.05
+  bf16: true
+  gradient_checkpointing: true
+  save_steps: 200
+  logging_steps: 10
+  seed: 42
+
+data:
+  source_dir: "./data/processed"
+  teacher_labels_dir: "./data/teacher_labels"
+  tasks:
+    - "clause_extraction"
+    - "risk_routing"
+    - "redline_generation"

@@ -1,0 +1,45 @@
+import functools
+import uuid
+import asyncio
+import json
+from typing import Any, Callable, Dict, Optional
+from backend.shared.utils.mcp_logger import get_mcp_logger, trace_id_var
+
+logger = get_mcp_logger()
+
+def mcp_tool_wrapper(func: Callable) -> Callable:
+    """
+    SOLID & DRY: Centralized decorator for MCP tools to handle tracing, 
+    logging, and tenant validation.
+    """
+    @functools.wraps(func)
+    async def async_wrapper(*args, **kwargs) -> Any:
+        # 1. Initialize Trace ID if not present
+        tid = trace_id_var.get()
+        if not tid:
+            tid = str(uuid.uuid4())
+            trace_id_var.set(tid)
+            
+        # 2. Validate tenant_id (Mandatory requirement per implementation plan)
+        tenant_id = kwargs.get("tenant_id")
+        if not tenant_id:
+            logger.error(f"Missing tenant_id in tool {func.__name__}", ValueError("Missing mandatory 'tenant_id' parameter"))
+            return json.dumps({"error": "Missing mandatory 'tenant_id' parameter", "status": "failed", "trace_id": tid})
+
+        # 3. Log execution
+        logger.log_tool_execution(func.__name__, tenant_id, metadata={"args": str(args), "kwargs": str(kwargs)})
+        
+        try:
+            # 4. Execute the tool
+            if asyncio.iscoroutinefunction(func):
+                result = await func(*args, **kwargs)
+            else:
+                result = func(*args, **kwargs)
+                
+            logger.info(f"Successfully completed {func.__name__} for tenant {tenant_id}")
+            return result
+        except Exception as e:
+            logger.error(f"Error in tool {func.__name__} for tenant {tenant_id}", e)
+            return json.dumps({"error": str(e), "status": "failed", "trace_id": tid})
+            
+    return async_wrapper

@@ -1,0 +1,9 @@
+SIMPLE TEST CONTRACT
+
+This is a test contract between Company A and Company B.
+
+Payment Terms: Net 30 days
+Liability: Limited to $50,000  
+Termination: 30 days notice required
+
+This contract is effective January 1, 2024.

@@ -1,0 +1,1 @@
+# Documentation domain entities and value objects

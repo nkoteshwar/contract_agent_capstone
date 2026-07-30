@@ -1,0 +1,62 @@
+/* Force light theme for legal professionals */
+:root {
+  --background: 248 250 252; /* slate-50 */
+  --foreground: 15 23 42; /* slate-800 */
+  --card: 255 255 255; /* white */
+  --card-foreground: 15 23 42; /* slate-800 */
+  --popover: 255 255 255; /* white */
+  --popover-foreground: 15 23 42; /* slate-800 */
+  --primary: 59 130 246; /* blue-500 */
+  --primary-foreground: 255 255 255; /* white */
+  --secondary: 241 245 249; /* slate-100 */
+  --secondary-foreground: 15 23 42; /* slate-800 */
+  --muted: 241 245 249; /* slate-100 */
+  --muted-foreground: 100 116 139; /* slate-500 */
+  --accent: 241 245 249; /* slate-100 */
+  --accent-foreground: 15 23 42; /* slate-800 */
+  --destructive: 239 68 68; /* red-500 */
+  --destructive-foreground: 255 255 255; /* white */
+  --border: 226 232 240; /* slate-200 */
+  --input: 226 232 240; /* slate-200 */
+  --ring: 59 130 246; /* blue-500 */
+}
+
+/* Override dark theme completely */
+.dark {
+  --background: 248 250 252; /* slate-50 */
+  --foreground: 15 23 42; /* slate-800 */
+  --card: 255 255 255; /* white */
+  --card-foreground: 15 23 42; /* slate-800 */
+  --popover: 255 255 255; /* white */
+  --popover-foreground: 15 23 42; /* slate-800 */
+  --primary: 59 130 246; /* blue-500 */
+  --primary-foreground: 255 255 255; /* white */
+  --secondary: 241 245 249; /* slate-100 */
+  --secondary-foreground: 15 23 42; /* slate-800 */
+  --muted: 241 245 249; /* slate-100 */
+  --muted-foreground: 100 116 139; /* slate-500 */
+  --accent: 241 245 249; /* slate-100 */
+  --accent-foreground: 15 23 42; /* slate-800 */
+  --destructive: 239 68 68; /* red-500 */
+  --destructive-foreground: 255 255 255; /* white */
+  --border: 226 232 240; /* slate-200 */
+  --input: 226 232 240; /* slate-200 */
+  --ring: 59 130 246; /* blue-500 */
+}
+
+/* Force light background */
+body {
+  background-color: rgb(248 250 252) !important;
+  color: rgb(15 23 42) !important;
+}
+
+/* Professional styling */
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-feature-settings: "rlig" 1, "calt" 1;
+}

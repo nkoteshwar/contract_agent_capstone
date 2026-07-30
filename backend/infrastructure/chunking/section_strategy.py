@@ -1,0 +1,215 @@
+"""Section-aware chunking strategy for legal documents."""
+
+import re
+from typing import List, Dict, Any
+from .base_strategy import IChunkingStrategy as ChunkingStrategy
+
+
+class SectionStrategy(ChunkingStrategy):
+    """Chunks text based on legal document sections and headers."""
+    
+    def chunk_document(self, content: str, metadata: Dict[str, Any]) -> List:
+        """Compatibility method for existing interface."""
+        chunks = self.chunk_text(content, metadata)
+        # Convert to expected format
+        results = []
+        for chunk in chunks:
+            result = type('ChunkResult', (), {
+                'chunk_id': f"chunk_{chunk.get('chunk_index', 0)}",
+                'content': chunk['content'],
+                'chunk_type': chunk.get('chunk_type', 'section'),
+                'start_pos': chunk.get('start_position', 0),
+                'end_pos': chunk.get('end_position', 0),
+                'confidence': chunk.get('quality_score', 0.8)
+            })()
+            results.append(result)
+        return results
+    
+    def get_chunk_size(self) -> int:
+        """Return the target chunk size."""
+        return self.max_chunk_size
+    """Chunks text based on legal document sections and headers."""
+    
+    def __init__(self, min_chunk_size: int = 500, max_chunk_size: int = 2000):
+        self.min_chunk_size = min_chunk_size
+        self.max_chunk_size = max_chunk_size
+        
+        # Legal section patterns
+        self.section_patterns = [
+            r'^(?:ARTICLE|Article|SECTION|Section)\s+[IVX\d]+[.\s]',  # Article/Section with Roman/Arabic numerals
+            r'^\d+\.\s+[A-Z][^.]*[.:]',  # Numbered sections
+            r'^[A-Z][A-Z\s]{10,}:?\s*$',  # ALL CAPS headers
+            r'^\([a-z]\)\s+',  # (a), (b), (c) subsections
+            r'^\([0-9]+\)\s+',  # (1), (2), (3) subsections
+        ]
+    
+    def chunk_text(self, text: str, metadata: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        """Chunk text by section boundaries."""
+        sections = self._identify_sections(text)
+        
+        if not sections:
+            # Fallback to paragraph chunking if no sections found
+            return self._fallback_chunk(text, metadata)
+        
+        chunks = []
+        for section in sections:
+            if len(section['content']) > self.max_chunk_size:
+                # Split large sections into sub-chunks
+                sub_chunks = self._split_large_section(section, text)
+                chunks.extend(sub_chunks)
+            else:
+                chunks.append(section)
+        
+        return self._add_overlap(chunks, text, metadata)
+    
+    def _identify_sections(self, text: str) -> List[Dict[str, Any]]:
+        """Identify section boundaries in legal text."""
+        lines = text.split('\n')
+        sections = []
+        current_section = []
+        current_start = 0
+        section_start_line = 0
+        
+        for i, line in enumerate(lines):
+            line_stripped = line.strip()
+            
+            # Check if line matches section pattern
+            is_section_header = any(re.match(pattern, line_stripped) for pattern in self.section_patterns)
+            
+            if is_section_header and current_section:
+                # Finalize previous section
+                section_content = '\n'.join(current_section)
+                if section_content.strip():
+                    sections.append({
+                        'content': section_content.strip(),
+                        'start_position': current_start,
+                        'end_position': current_start + len(section_content),
+                        'chunk_type': 'section',
+                        'size': len(section_content),
+                        'section_header': current_section[0].strip() if current_section else ''
+                    })
+                
+                # Start new section
+                current_section = [line]
+                current_start = text.find(line, current_start)
+                section_start_line = i
+            else:
+                current_section.append(line)
+        
+        # Add final section
+        if current_section:
+            section_content = '\n'.join(current_section)
+            if section_content.strip():
+                sections.append({
+                    'content': section_content.strip(),
+                    'start_position': current_start,
+                    'end_position': len(text),
+                    'chunk_type': 'section',
+                    'size': len(section_content),
+                    'section_header': current_section[0].strip() if current_section else ''
+                })
+        
+        return sections
+    
+    def _split_large_section(self, section: Dict[str, Any], full_text: str) -> List[Dict[str, Any]]:
+        """Split large sections into manageable chunks."""
+        content = section['content']
+        chunks = []
+        
+        # Split by paragraphs within the section
+        paragraphs = re.split(r'\n\s*\n', content)
+        current_chunk = ""
+        current_start = section['start_position']
+        
+        for paragraph in paragraphs:
+            if current_chunk and len(current_chunk) + len(paragraph) > self.max_chunk_size:
+                chunks.append({
+                    'content': current_chunk.strip(),
+                    'start_position': current_start,
+                    'end_position': current_start + len(current_chunk),
+                    'chunk_type': 'section_part',
+                    'size': len(current_chunk),
+                    'parent_section': section.get('section_header', '')
+                })
+                current_chunk = paragraph
+                current_start += len(current_chunk)
+            else:
+                if current_chunk:
+                    current_chunk += "\n\n" + paragraph
+                else:
+                    current_chunk = paragraph
+        
+        # Add final chunk
+        if current_chunk:
+            chunks.append({
+                'content': current_chunk.strip(),
+                'start_position': current_start,
+                'end_position': section['end_position'],
+                'chunk_type': 'section_part',
+                'size': len(current_chunk),
+                'parent_section': section.get('section_header', '')
+            })
+        
+        return chunks
+    
+    def _fallback_chunk(self, text: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Fallback to simple chunking when no sections detected."""
+        chunks = []
+        words = text.split()
+        current_chunk = []
+        current_size = 0
+        start_pos = 0
+        
+        for word in words:
+            if current_size + len(word) > self.max_chunk_size and current_chunk:
+                chunk_content = ' '.join(current_chunk)
+                chunks.append({
+                    'content': chunk_content,
+                    'start_position': start_pos,
+                    'end_position': start_pos + len(chunk_content),
+                    'chunk_type': 'fallback',
+                    'size': len(chunk_content)
+                })
+                current_chunk = [word]
+                current_size = len(word)
+                start_pos += len(chunk_content) + 1
+            else:
+                current_chunk.append(word)
+                current_size += len(word) + 1
+        
+        # Add final chunk
+        if current_chunk:
+            chunk_content = ' '.join(current_chunk)
+            chunks.append({
+                'content': chunk_content,
+                'start_position': start_pos,
+                'end_position': len(text),
+                'chunk_type': 'fallback',
+                'size': len(chunk_content)
+            })
+        
+        return chunks
+    
+    def _add_overlap(self, chunks: List[Dict[str, Any]], text: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Add section-aware overlap between chunks."""
+        if len(chunks) <= 1:
+            return chunks
+        
+        overlap_ratio = 0.2  # 20% overlap for section-based chunks
+        
+        for i in range(len(chunks) - 1):
+            current_chunk = chunks[i]
+            next_chunk = chunks[i + 1]
+            
+            # Only add overlap if chunks are from same section or adjacent sections
+            if (current_chunk.get('chunk_type') == 'section_part' and 
+                next_chunk.get('chunk_type') == 'section_part' and
+                current_chunk.get('parent_section') == next_chunk.get('parent_section')):
+                
+                overlap_size = int(len(current_chunk['content']) * overlap_ratio)
+                current_end = current_chunk['content'][-overlap_size:]
+                next_chunk['content'] = current_end + "\n" + next_chunk['content']
+                next_chunk['has_overlap'] = True
+                next_chunk['overlap_size'] = overlap_size
+        
+        return chunks

@@ -1,0 +1,52 @@
+# Hallucination Checks Implementation Walkthrough
+
+I have implemented a comprehensive hallucination detection system within the governance layer of the contract agent.
+
+## Changes Made
+
+### 1. Base Governance Updates
+- Modified [IGuardValidator](file:///c:/AntiGravity-AI/contract_agent_capstone/backend/governance/base.py#18-49) and [BaseGuard](file:///c:/AntiGravity-AI/contract_agent_capstone/backend/governance/base.py#50-110) in [base.py](file:///c:/AntiGravity-AI/contract_agent_capstone/backend/governance/base.py) to support optional `context_metadata`. This allows validators to access source contract text during validation.
+- Updated all existing validators (PII, Safety, Topic, etc.) to maintain compatibility with the new interface.
+
+### 2. Hallucination Validator
+- Created [hallucination.py](file:///c:/AntiGravity-AI/contract_agent_capstone/backend/governance/validators/hallucination.py):
+    - Implements an LLM-based "Critic" pattern.
+    - Compares the AI's generated response against the `source_text` provided in the context.
+    - Detects unsupported numbers, parties, and legal claims.
+    - Returns `is_safe=False` with a detailed reason if a hallucination is detected.
+
+### 3. Output Guard Integration
+- Integrated [HallucinationValidator](file:///c:/AntiGravity-AI/contract_agent_capstone/backend/governance/validators/hallucination.py#8-83) into the [OutputGuard](file:///c:/AntiGravity-AI/contract_agent_capstone/backend/governance/output_guard.py#5-36) default chain in [output_guard.py](file:///c:/AntiGravity-AI/contract_agent_capstone/backend/governance/output_guard.py).
+- Updated [main.py](file:///c:/AntiGravity-AI/contract_agent_capstone/backend/main.py) to automatically extract `source_text` from all tool execution results (e.g., contract search results) and pass it to the governance layer.
+- Ensured consistent use of `gemini-2.5-flash` across all governance components for reliable validation.
+
+### 4. Comprehensive Audit Logging
+- Extended [AuditEventType](file:///c:/AntiGravity-AI/contract_agent_capstone/backend/infrastructure/audit_logger.py#16-33) in [audit_logger.py](file:///c:/AntiGravity-AI/contract_agent_capstone/backend/infrastructure/audit_logger.py) to include `AGENT_TOOL_CALL`, `AGENT_THOUGHT`, `MODEL_GUARD_CHECK`, and `USER_INTERACTION`.
+- Created [agent_audit_service.py](file:///c:/AntiGravity-AI/contract_agent_capstone/backend/infrastructure/agent_audit_service.py) to provide a specialized interface for logging agentic events.
+- Integrated audit logging into [contract_chat_agent.py](file:///c:/AntiGravity-AI/contract_agent_capstone/backend/contract_chat_agent.py) to track every tool execution and its result.
+- Integrated lifecycle auditing into [main.py](file:///c:/AntiGravity-AI/contract_agent_capstone/backend/main.py), capturing user sessions and all governance guard decisions.
+
+## Verification Results
+
+### Hallucination System
+- Verified via [test_hallucination_system.py](file:///c:/AntiGravity-AI/contract_agent_capstone/tests/test_hallucination_system.py).
+- Successfully detected and blocked fabricated information in contract summaries.
+
+### Audit System
+- Verified via [test_audit_logic_only.py](file:///c:/AntiGravity-AI/contract_agent_capstone/tests/test_audit_logic_only.py).
+- Confirmed that all granular agentic events are correctly captured with proper metadata for debugging and compliance.
+
+#### Test Execution Logs:
+```text
+{"timestamp": "2026-03-27T09:14:33.611259Z", "level": "INFO", "name": "backend.governance.validators.hallucination", "message": "Performing hallucination check against source context..."}
+{"timestamp": "2026-03-27T09:14:33.611259Z", "level": "WARNING", "name": "backend.governance.validators.hallucination", "message": "Hallucination detected: Termination fee and Gamma LLC are not in source text"}
+Safe Output Result: is_safe=True
+Hallucinated Output Result: is_safe=False, violation=HALLUCINATION_DETECTED
+Verification tests passed!
+```
+
+## AI Patterns Used
+- **Agentic AI Patterns**: Self-Correction / Critic pattern for verification.
+- **Strategy Pattern**: Pluggable validators within the governance framework.
+- **Chain of Responsibility**: Sequential processing of safety and validity checks.
+- **SOLID/DRY**: Shared base classes and interfaces for all governance components.

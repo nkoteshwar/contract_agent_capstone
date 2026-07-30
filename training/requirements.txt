@@ -1,0 +1,30 @@
+# Training Pipeline Dependencies
+# Install: pip install -r requirements.txt
+
+# Core ML
+torch>=2.2.0
+transformers>=4.45.0
+datasets>=2.20.0,<3.0.0
+accelerate>=0.34.0
+
+# QLoRA / LoRA
+peft>=0.12.0
+bitsandbytes>=0.43.0
+trl>=0.9.0
+
+# Evaluation
+rouge-score>=0.1.2
+scikit-learn>=1.5.0
+evaluate>=0.4.0
+
+# Data processing
+pandas>=2.2.0
+jsonlines>=4.0.0
+
+# Utilities
+pyyaml>=6.0.0
+tqdm>=4.66.0
+huggingface-hub>=0.24.0
+
+# Optional: experiment tracking
+# wandb>=0.17.0
