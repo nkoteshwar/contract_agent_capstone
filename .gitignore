@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+ENV/
+
+# System
+.DS_Store
+Thumbs.db
+
+# Project-specific
+data/demo_contracts.json
+.env
+.env.*
+!.env.example
+.python-version
+.node-version
+node_modules/
+dist/
+build/
